@@ -1,0 +1,35 @@
+# Core dependencies for A2A Dynamic Orchestrator
+# Install with: pip install -r requirements.txt
+
+# FastAPI and web server
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+starlette>=0.27.0
+
+# Google ADK and related
+google-adk>=1.13.0
+google-cloud-aiplatform>=1.99.0
+google-genai>=0.2.0
+
+# A2A agent framework
+a2a>=0.1.0
+
+# HTTP client and async support
+aiohttp>=3.9.0
+httpx>=0.25.0
+
+# Data validation and parsing
+pydantic>=2.5.0
+
+# Environment configuration
+python-dotenv>=1.0.0
+
+# Development and testing (optional)
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+black>=23.0.0
+isort>=5.12.0
+mypy>=1.7.0
+
+# Logging and monitoring (optional)
+structlog>=23.0.0
