@@ -26,8 +26,8 @@ from google.adk.runners import Runner
 from google.adk.artifacts import InMemoryArtifactService
 from google.adk.sessions import InMemorySessionService
 
-from .weather_agent import create_weather_agent
-from ..registry_service.auto_registration import AutoRegistration, AgentInfo
+from weather_agent.weather_agent import create_weather_agent
+from registry_service.auto_registration import AutoRegistration, AgentInfo
 
 load_dotenv()
 

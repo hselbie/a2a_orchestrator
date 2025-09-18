@@ -10,19 +10,20 @@ This is a **Dynamic Agent-to-Agent (A2A) Orchestrator** system that demonstrates
 
 ### Quick Start
 ```bash
-# Start the entire system (recommended)
-python start_system.py
+# Start components individually (no combined start script available):
 
-# Or start components individually:
 # 1. Start registry server first
-python mcp_server/agent_registry.py
+python registry_service/start.py  # port 8080
 
-# 2. Start agent servers (they auto-register)
-python weather_a2a_server.py  # port 8001
-python cocktail_a2a_server.py # port 8002
+# 2. Start agent servers (they auto-register) - either method works:
+python weather_agent/start.py     # port 8001
+# OR: python -m weather_agent.start
+
+python cocktail_agent/start.py    # port 8002
+# OR: python -m cocktail_agent.start
 
 # 3. Start orchestrator
-python run_dynamic_orchestrator.py # port 8000
+python -m planning_orchestrator.start # port 8000
 ```
 
 ### Testing
@@ -34,21 +35,31 @@ python run_dynamic_orchestrator.py # port 8000
 
 ### Core Components
 
-**Dynamic Orchestrator (`dynamic_orchestrator_agent.py`)**
+**Planning Orchestrator (`planning_orchestrator/`)**
+- `planning_orchestrator_agent.py` - Core orchestrator with planning capabilities
+- `run_planning_orchestrator.py` - Main runner script with WebSocket interface
+- `planning_tools.py` - Planning and execution tools
 - Analyzes user queries and discovers appropriate agents via MCP registry
-- Routes requests using `RemoteA2aAgent` connections
-- Provides intelligent agent selection with scoring and reasoning
+- Routes requests using intelligent agent selection with scoring and reasoning
 - Runs on port 8000 with WebSocket interface
 
-**Agent Registry (`mcp_server/agent_registry.py`)**
-- FastAPI-based registration service for agent discovery
+**Agent Registry (`registry_service/`)**
+- `fastapi_registry.py` - FastAPI-based registration service for agent discovery
+- `auto_registration.py` - Auto-registration utilities for agents
+- `start.py` - Registry startup script
 - Maintains agent metadata (capabilities, skills, descriptions)
 - Handles agent heartbeats and automatic cleanup of stale agents
-- Exposes discovery tools via MCP protocol
+- Runs on port 8080
 
 **Specialized Agents**
-- `weather_agent.py` + `weather_a2a_server.py` - National Weather Service integration (port 8001)
-- `cocktail_agent.py` + `cocktail_a2a_server.py` - TheCocktailDB integration (port 8002)
+- `weather_agent/` - National Weather Service integration (port 8001)
+  - `weather_agent.py` - Agent definition with weather capabilities
+  - `weather_a2a_server.py` - A2A server implementation
+  - `start.py` - Weather agent startup script
+- `cocktail_agent/` - TheCocktailDB integration (port 8002)
+  - `cocktail_agent.py` - Agent definition with cocktail capabilities
+  - `cocktail_a2a_server.py` - A2A server implementation
+  - `start.py` - Cocktail agent startup script
 - Each agent auto-registers with registry on startup
 
 ### Key Patterns
@@ -65,7 +76,7 @@ python run_dynamic_orchestrator.py # port 8000
 
 **ADK Architecture**: Built on Google ADK primitives
 - `LlmAgent` with MCP toolsets for specialized agents
-- `Agent` (not `LlmAgent`) for orchestrator with discovery logic
+- Planning-based orchestrator for discovery and routing logic
 - `Runner` for execution with session/artifact management
 
 ## Discovery and Routing Flow
@@ -88,31 +99,34 @@ This project inherits dependencies from the parent `pyproject.toml`:
 
 ```bash
 # Start individual components for debugging
-python mcp_server/agent_registry.py    # Registry only
-python weather_a2a_server.py          # Weather agent only
-python cocktail_a2a_server.py         # Cocktail agent only
-python run_dynamic_orchestrator.py    # Orchestrator only
+python registry_service/start.py                            # Registry only (port 8080)
+python weather_agent/start.py                              # Weather agent only (port 8001)
+python cocktail_agent/start.py                             # Cocktail agent only (port 8002)
+python planning_orchestrator/run_planning_orchestrator.py  # Orchestrator only (port 8000)
 
 # Test MCP servers directly
 python -c "from mcp_server.weather import main; import asyncio; asyncio.run(main())"
+python -c "from mcp_server.cocktail import main; import asyncio; asyncio.run(main())"
 
-# Test agent registration
-python example_agent_with_registry.py
+# Test registry service
+python -c "from registry_service.fastapi_registry import app; import uvicorn; uvicorn.run(app, port=8080)"
 ```
 
 ## System Management
 
-- **Startup Order**: Registry → Agents → Orchestrator (handled by `start_system.py`)
+- **Startup Order**: Registry → Agents → Orchestrator (manual startup required)
 - **Health Monitoring**: Registry tracks agent heartbeats, removes stale agents after 30s
-- **Process Management**: `start_system.py` handles graceful startup/shutdown of all components
+- **Process Management**: Each component must be started individually using their respective start scripts
 - **Logging**: Comprehensive logging across all components for debugging agent discovery and routing
 
 ## Extension Points
 
 To add new specialized agents:
-1. Create agent definition (e.g., `my_agent.py`) with `LlmAgent` + MCP toolset
-2. Create A2A server (e.g., `my_a2a_server.py`) with `AgentSkill` metadata
-3. Add MCP server for tools in `mcp_server/my_tools.py` if needed
-4. Update `start_system.py` to include the new agent in startup sequence
+1. Create agent directory (e.g., `my_agent/`)
+2. Create agent definition (`my_agent/my_agent.py`) with `LlmAgent` + MCP toolset
+3. Create A2A server (`my_agent/my_a2a_server.py`) with `AgentSkill` metadata
+4. Create startup script (`my_agent/start.py`) following the pattern of existing agents
+5. Add MCP server for tools in `mcp_server/my_tools.py` if needed
+6. Start the new agent manually: `python my_agent/start.py`
 
 The orchestrator will automatically discover and route to new agents based on their registered skills and capabilities.

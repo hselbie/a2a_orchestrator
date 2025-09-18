@@ -6,6 +6,7 @@ execution to a specialized executor agent with MCP tools.
 """
 
 import json
+from pathlib import Path
 from google.adk.agents import LlmAgent
 from google.adk.tools.function_tool import FunctionTool
 from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
@@ -18,19 +19,21 @@ from .planning_tools import (
     list_available_agents
 )
 
+# Get the project root directory
+PROJECT_ROOT = Path(__file__).parent.parent
 
 # MCP Server configurations for executor tools
 weather_server_params = StdioConnectionParams(
     server_params=StdioServerParameters(
         command="python3",
-        args=["../mcp_server/weather.py"],
+        args=[str(PROJECT_ROOT / "mcp_server" / "weather.py")],
     )
 )
 
 cocktail_server_params = StdioConnectionParams(
     server_params=StdioServerParameters(
         command="python3",
-        args=["../mcp_server/cocktail.py"],
+        args=[str(PROJECT_ROOT / "mcp_server" / "cocktail.py")],
     )
 )
 

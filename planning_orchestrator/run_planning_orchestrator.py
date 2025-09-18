@@ -24,7 +24,7 @@ from .planning_orchestrator_agent import create_planning_orchestrator_agent
 load_dotenv()
 
 APP_NAME = "ADK Planning-Based Dynamic Orchestrator"
-STATIC_DIR = Path("../static")
+STATIC_DIR = Path(__file__).parent.parent / "static"
 
 session_service = InMemorySessionService()
 artifacts_service = InMemoryArtifactService()
@@ -35,23 +35,30 @@ async def process_message_with_runner(runner: Runner, session_id: str, question:
     logging.info(f"   Session: {session_id}")
     logging.info(f"   Query: {question}")
 
-    content = types.Content(role="user", parts=[types.Part(text=question)])
-    events_async = runner.run_async(
-        session_id=session_id, user_id=session_id, new_message=content
-    )
+    try:
+        content = types.Content(role="user", parts=[types.Part(text=question)])
+        events_async = runner.run_async(
+            session_id=session_id, user_id=session_id, new_message=content
+        )
 
-    response_parts = []
-    event_count = 0
-    async for event in events_async:
-        event_count += 1
-        if event.content.role == "model" and event.content.parts[0].text:
-            event_text = event.content.parts[0].text
-            print(f"[planning-orchestrator-event-{event_count}]:", event_text)
-            logging.info(f"📢 PLANNING ORCHESTRATOR EVENT #{event_count}: {event_text[:100]}...")
-            response_parts.append(event_text)
+        response_parts = []
+        event_count = 0
+        async for event in events_async:
+            event_count += 1
+            if event.content.role == "model" and event.content.parts[0].text:
+                event_text = event.content.parts[0].text
+                print(f"[planning-orchestrator-event-{event_count}]:", event_text)
+                logging.info(f"📢 PLANNING ORCHESTRATOR EVENT #{event_count}: {event_text[:100]}...")
+                response_parts.append(event_text)
 
-    logging.info(f"✅ PLANNING ORCHESTRATOR COMPLETE: Generated {len(response_parts)} response parts from {event_count} events")
-    return response_parts
+        logging.info(f"✅ PLANNING ORCHESTRATOR COMPLETE: Generated {len(response_parts)} response parts from {event_count} events")
+        return response_parts
+
+    except Exception as e:
+        logging.error(f"❌ PLANNING ORCHESTRATOR ERROR: Failed to process message for session {session_id}: {e}")
+        logging.error(f"   Error type: {type(e).__name__}")
+        # Return a fallback response so the user gets something
+        return [f"I apologize, but I encountered an error processing your request: {str(e)[:200]}..."]
 
 async def run_planning_orchestrator_session(websocket: WebSocket, session_id: str):
     """Handles client-to-orchestrator communication over WebSocket for a session."""
@@ -72,26 +79,41 @@ async def run_planning_orchestrator_session(websocket: WebSocket, session_id: st
             text = await websocket.receive_text()
             logging.info(f"📨 WEBSOCKET: Received from {session_id}: '{text}'")
 
-            response_parts = await process_message_with_runner(runner, session_id, text)
-            if not response_parts:
-                logging.warning(f"⚠️  PLANNING ORCHESTRATOR: No response generated for session {session_id}")
-                continue
+            try:
+                response_parts = await process_message_with_runner(runner, session_id, text)
+                if not response_parts:
+                    logging.warning(f"⚠️  PLANNING ORCHESTRATOR: No response generated for session {session_id}")
+                    response_parts = ["I apologize, but I wasn't able to generate a response to your query. Please try again."]
 
-            # Send the text to the client
-            ai_message = "\n".join(response_parts)
-            logging.info(f"📤 WEBSOCKET: Sending response to {session_id}")
-            logging.info(f"   Response length: {len(ai_message)} characters")
-            logging.info(f"   Response preview: {ai_message[:100]}...")
+                # Send the text to the client
+                ai_message = "\n".join(response_parts)
+                logging.info(f"📤 WEBSOCKET: Sending response to {session_id}")
+                logging.info(f"   Response length: {len(ai_message)} characters")
+                logging.info(f"   Response preview: {ai_message[:100]}...")
 
-            await websocket.send_text(json.dumps({"message": ai_message}))
-            logging.info(f"✅ WEBSOCKET: Response sent successfully to {session_id}")
+                await websocket.send_text(json.dumps({"message": ai_message}))
+                logging.info(f"✅ WEBSOCKET: Response sent successfully to {session_id}")
+
+            except Exception as e:
+                logging.error(f"❌ WEBSOCKET ERROR: Failed to process/send message for session {session_id}: {e}")
+                try:
+                    error_message = f"I encountered an error processing your request: {str(e)[:200]}..."
+                    await websocket.send_text(json.dumps({"message": error_message}))
+                    logging.info(f"📤 WEBSOCKET: Error message sent to {session_id}")
+                except Exception as send_error:
+                    logging.error(f"❌ WEBSOCKET SEND ERROR: Could not send error message to {session_id}: {send_error}")
+                    break  # Connection is likely broken, exit the loop
 
     except WebSocketDisconnect:
         logging.info(f"🔌 WEBSOCKET: Client {session_id} disconnected")
     finally:
         logging.info(f"🧹 CLEANUP: Closing runner for session {session_id}...")
-        await runner.close()
-        logging.info(f"✅ CLEANUP: Runner closed for session {session_id}. Planning orchestrator session ending.")
+        try:
+            await runner.close()
+            logging.info(f"✅ CLEANUP: Runner closed for session {session_id}. Planning orchestrator session ending.")
+        except Exception as e:
+            logging.warning(f"⚠️ CLEANUP: Error closing runner for session {session_id}: {e}")
+            logging.info(f"✅ CLEANUP: Session {session_id} cleanup completed despite error.")
 
 # FastAPI web app
 app = FastAPI()

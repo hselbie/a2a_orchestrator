@@ -35,27 +35,42 @@ uv run python -m registry_service.start
 
 #### Terminal 2: Weather Agent
 ```bash
-uv run python -m weather_agent.start
+# Either method works:
+uv run python weather_agent/start.py
+# OR: uv run python -m weather_agent.start
 ```
 **Expected**: `🌦️ Starting A2A Weather Agent Server with Auto-Registration...`
+**Port**: 8001
 
 #### Terminal 3: Cocktail Agent
 ```bash
-uv run python -m cocktail_agent.start
+# Either method works:
+uv run python cocktail_agent/start.py
+# OR: uv run python -m cocktail_agent.start
 ```
 **Expected**: `🍹 Starting A2A Cocktail Agent Server with Auto-Registration...`
+**Port**: 8002
 
 #### Terminal 4: Planning Orchestrator
 ```bash
 uv run python -m planning_orchestrator.start
 ```
 **Expected**: `🚀 Starting Planning-Based Dynamic Orchestrator on http://localhost:8000`
+**Port**: 8000
 
 ### Testing
 1. **Web Interface**: http://localhost:8000
-2. **Test Weather**: "What's the weather in San Francisco?"
-3. **Test Cocktail**: "How do I make a margarita?"
-4. **System Tests**: `uv run python tests/test_system.py`
+2. **Sample Queries**:
+   - Weather: "What's the weather in San Francisco?"
+   - Cocktails: "How do I make a margarita?"
+   - Mixed: "What cocktails go well with cold weather?"
+3. **System Tests**: `uv run python tests/test_system.py`
+
+### ✅ Recent Fixes Applied
+- **Import Issues**: Fixed relative import errors in all agent start scripts
+- **Path Issues**: Corrected MCP server paths and static directory paths
+- **Error Handling**: Added robust error handling for MCP session cleanup
+- **WebSocket Stability**: Improved WebSocket error handling to prevent "connection closed" issues
 
 ## 🏗️ Architecture
 
@@ -116,10 +131,17 @@ a2a_orchestrator/
 
 ### Adding New Agents
 1. Create new agent folder: `mkdir my_agent`
-2. Follow the pattern in `weather_agent/` or `cocktail_agent/`
+2. Follow the pattern in `weather_agent/` or `cocktail_agent/`:
+   - `my_agent.py` - Agent definition with LlmAgent
+   - `my_a2a_server.py` - A2A server with auto-registration
+   - `start.py` - Startup script (use absolute imports)
+   - `__init__.py` - Package marker
 3. Add auto-registration in your A2A server
-4. Define appropriate skills and capabilities
-5. Add corresponding MCP tools if needed
+4. Define appropriate skills and capabilities in AgentCard
+5. Add corresponding MCP tools in `mcp_server/` if needed
+6. Update startup instructions in this README
+
+**Important**: Use absolute imports in all new agent files to avoid import errors.
 
 ### Configuration
 
@@ -140,20 +162,36 @@ a2a_orchestrator/
 
 **Port already in use**:
 ```bash
-lsof -i :8080    # Find process
+lsof -i :8080    # Find process using port 8080
+lsof -i :8000    # Find process using port 8000
 kill -9 <PID>    # Kill process
 ```
+
+**Import/Module errors**:
+- Ensure you're in the correct directory (`a2a_orchestrator/`)
+- Use the exact commands shown above (relative imports are fixed)
+- Check that all dependencies are installed: `uv sync`
 
 **Agent registration failures**:
 - Start registry first and wait for "Uvicorn running" message
 - Wait 3-5 seconds between starting each service
-- Check registry logs in Terminal 1
+- Check registry logs in Terminal 1 for registration confirmations
+
+**"Connection closed" in web interface**:
+- Check all 4 services are running (registry, weather, cocktail, orchestrator)
+- Look for error messages in Terminal 4 (orchestrator logs)
+- Try refreshing the browser and reconnecting
 
 **Google Cloud authentication**:
 ```bash
 gcloud auth application-default login
 gcloud auth list  # Verify authentication
+gcloud config set project YOUR_PROJECT_ID
 ```
+
+**MCP Server errors**:
+- All MCP server paths are now absolute (fixed in recent updates)
+- If you see "can't find weather.py" errors, restart the orchestrator
 
 ### Stopping the System
 Stop in reverse order:
