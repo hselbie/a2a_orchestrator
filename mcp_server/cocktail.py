@@ -1,15 +1,15 @@
-from typing import Any, Dict, Optional
-
-import httpx
 import logging
 import sys
+from typing import Any
+
+import httpx
 from mcp.server.fastmcp import FastMCP
 
 # Configure logging to stderr (safe for MCP stdio transport)
 logging.basicConfig(
     level=logging.INFO,
-    format='[COCKTAIL-MCP] %(asctime)s - %(levelname)s - %(message)s',
-    stream=sys.stderr
+    format="[COCKTAIL-MCP] %(asctime)s - %(levelname)s - %(message)s",
+    stream=sys.stderr,
 )
 logger = logging.getLogger(__name__)
 
@@ -23,8 +23,8 @@ API_BASE_URL = "https://www.thecocktaildb.com/api/json/v1/1/"
 
 # --- Helper Functions ---
 async def make_cocktaildb_request(
-    endpoint: str, params: Optional[Dict[str, str]] = None
-) -> Optional[Dict[str, Any]]:
+    endpoint: str, params: dict[str, str] | None = None
+) -> dict[str, Any] | None:
     """Makes a request to TheCocktailDB API and returns the JSON response."""
     url = f"{API_BASE_URL}{endpoint}"
     logger.info(f"Making CocktailDB API request to: {url} with params: {params}")
@@ -42,15 +42,15 @@ async def make_cocktaildb_request(
                 return None
 
             # Handle cases where the primary key (drinks/ingredients) might be null
-            if data and (
-                data.get("drinks") is None and data.get("ingredients") is None
-            ):
+            if data and (data.get("drinks") is None and data.get("ingredients") is None):
                 # Check if it's a known 'no result' structure or genuinely empty
                 if "drinks" in data or "ingredients" in data:
                     logger.info("CocktailDB API returned empty drinks/ingredients")
                     return None  # Explicitly no results found based on API structure
 
-            logger.info(f"CocktailDB API returned data with keys: {list(data.keys()) if data else 'None'}")
+            logger.info(
+                f"CocktailDB API returned data with keys: {list(data.keys()) if data else 'None'}"
+            )
 
             if data:
                 drinks_count = len(data.get("drinks", []))
@@ -69,7 +69,7 @@ async def make_cocktaildb_request(
         return None
 
 
-def format_cocktail_summary(drink: Dict[str, Any]) -> str:
+def format_cocktail_summary(drink: dict[str, Any]) -> str:
     """Formats a cocktail dictionary into a readable summary string."""
     return (
         f"ID: {drink.get('idDrink', 'N/A')}\n"
@@ -82,7 +82,7 @@ def format_cocktail_summary(drink: Dict[str, Any]) -> str:
     )
 
 
-def format_cocktail_details(drink: Dict[str, Any]) -> str:
+def format_cocktail_details(drink: dict[str, Any]) -> str:
     """Formats a cocktail dictionary into a detailed readable string."""
     details = [
         f"ID: {drink.get('idDrink', 'N/A')}",
@@ -113,7 +113,7 @@ def format_cocktail_details(drink: Dict[str, Any]) -> str:
     return "\n".join(details)
 
 
-def format_ingredient(ingredient: Dict[str, Any]) -> str:
+def format_ingredient(ingredient: dict[str, Any]) -> str:
     """Formats an ingredient dictionary into a readable string."""
     desc = ingredient.get("strDescription", "No description available.")
     return (
@@ -192,7 +192,9 @@ async def search_ingredient_by_name(name: str) -> str:
 
     if data and data.get("ingredients"):
         ingredient = data["ingredients"][0]  # API returns a list with one item
-        logger.info(f"Found ingredient: {ingredient.get('strIngredient', 'Unknown')} for name: {name}")
+        logger.info(
+            f"Found ingredient: {ingredient.get('strIngredient', 'Unknown')} for name: {name}"
+        )
         result = format_ingredient(ingredient)
         logger.info(f"Returning ingredient info for name: {name}")
         return result
@@ -209,7 +211,7 @@ async def list_random_cocktails() -> str:
 
     if data and data.get("drinks"):
         drink = data["drinks"][0]
-        cocktail_name = drink.get('strDrink', 'Unknown')
+        cocktail_name = drink.get("strDrink", "Unknown")
         logger.info(f"Found random cocktail: {cocktail_name}")
         result = format_cocktail_details(drink)
         logger.info(f"Returning random cocktail details for: {cocktail_name}")
@@ -237,7 +239,7 @@ async def lookup_cocktail_details_by_id(cocktail_id: str) -> str:
 
     if data and data.get("drinks"):
         drink = data["drinks"][0]
-        cocktail_name = drink.get('strDrink', 'Unknown')
+        cocktail_name = drink.get("strDrink", "Unknown")
         logger.info(f"Found cocktail: {cocktail_name} for ID: {cocktail_id}")
         result = format_cocktail_details(drink)
         logger.info(f"Returning cocktail details for ID: {cocktail_id}")

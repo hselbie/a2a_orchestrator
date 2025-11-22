@@ -1,6 +1,6 @@
 from google.adk.agents import LlmAgent
-from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset
 from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
+from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset
 from mcp import StdioServerParameters
 
 cocktail_server_params = StdioConnectionParams(
@@ -9,6 +9,7 @@ cocktail_server_params = StdioConnectionParams(
         args=["./mcp_server/cocktail.py"],
     )
 )
+
 
 def create_cocktail_agent():
     """Creates a cocktail-focused ADK Agent with cocktail MCP tools."""

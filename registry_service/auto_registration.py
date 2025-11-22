@@ -7,28 +7,28 @@ with the agent registry on startup and maintain heartbeats.
 
 import asyncio
 import logging
-import time
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass
-
-import aiohttp
-from pydantic import BaseModel
 
 # Configure logging with structured format
 import os
-LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
+from dataclasses import dataclass
+from typing import Any
+
+import aiohttp
+
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class AgentInfo:
     """Information needed to register an agent."""
+
     name: str
     description: str
     url: str
     version: str = "1.0.0"
-    capabilities: Dict[str, Any] = None
-    skills: List[Dict[str, Any]] = None
+    capabilities: dict[str, Any] = None
+    skills: list[dict[str, Any]] = None
 
     def __post_init__(self):
         if self.capabilities is None:
@@ -36,7 +36,7 @@ class AgentInfo:
         if self.skills is None:
             self.skills = []
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for API requests."""
         return {
             "name": self.name,
@@ -44,12 +44,13 @@ class AgentInfo:
             "url": self.url,
             "version": self.version,
             "capabilities": self.capabilities,
-            "skills": self.skills
+            "skills": self.skills,
         }
 
 
 class RegistrationError(Exception):
     """Exception raised when agent registration fails."""
+
     pass
 
 
@@ -70,7 +71,7 @@ class AutoRegistration:
         registry_url: str = "http://localhost:8080",
         heartbeat_interval: int = 15,
         max_retries: int = 3,
-        retry_delay: int = 5
+        retry_delay: int = 5,
     ):
         """
         Initialize the auto-registration manager.
@@ -89,9 +90,9 @@ class AutoRegistration:
         self.retry_delay = retry_delay
 
         self.is_registered = False
-        self.heartbeat_task: Optional[asyncio.Task] = None
+        self.heartbeat_task: asyncio.Task | None = None
         self.shutdown_event = asyncio.Event()
-        self.session: Optional[aiohttp.ClientSession] = None
+        self.session: aiohttp.ClientSession | None = None
 
     async def __aenter__(self):
         """Async context manager entry."""
@@ -145,11 +146,15 @@ class AutoRegistration:
                 async with self.session.post(url, json=self.agent_info.to_dict()) as response:
                     if response.status in (200, 201):
                         self.is_registered = True
-                        logger.info(f"✅ Successfully registered agent: {self.agent_info.name} at {self.agent_info.url}")
+                        logger.info(
+                            f"✅ Successfully registered agent: {self.agent_info.name} at {self.agent_info.url}"
+                        )
                         return True
                     else:
                         text = await response.text()
-                        logger.warning(f"⚠️ Registration failed (attempt {attempt + 1}): {response.status} - {text}")
+                        logger.warning(
+                            f"⚠️ Registration failed (attempt {attempt + 1}): {response.status} - {text}"
+                        )
 
             except Exception as e:
                 logger.warning(f"⚠️ Registration attempt {attempt + 1} failed: {e}")
@@ -197,7 +202,9 @@ class AutoRegistration:
                     return True
                 elif response.status == 404:
                     # Agent not found in registry - need to re-register
-                    logger.warning(f"⚠️ Agent not found in registry, re-registering: {self.agent_info.name}")
+                    logger.warning(
+                        f"⚠️ Agent not found in registry, re-registering: {self.agent_info.name}"
+                    )
                     self.is_registered = False
                     await self.register()
                     return self.is_registered
@@ -214,13 +221,10 @@ class AutoRegistration:
         """Background task for sending periodic heartbeats."""
         while not self.shutdown_event.is_set():
             try:
-                await asyncio.wait_for(
-                    self.shutdown_event.wait(),
-                    timeout=self.heartbeat_interval
-                )
+                await asyncio.wait_for(self.shutdown_event.wait(), timeout=self.heartbeat_interval)
                 # If we reach here, shutdown was requested
                 break
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # Normal timeout - send heartbeat
                 await self.send_heartbeat()
 
@@ -238,9 +242,7 @@ class AutoRegistration:
 
 # Convenience function for simple usage
 async def register_agent_on_startup(
-    agent_info: AgentInfo,
-    registry_url: str = "http://localhost:8080",
-    heartbeat_interval: int = 15
+    agent_info: AgentInfo, registry_url: str = "http://localhost:8080", heartbeat_interval: int = 15
 ) -> AutoRegistration:
     """
     Convenience function to register an agent and start heartbeats.
@@ -254,9 +256,7 @@ async def register_agent_on_startup(
         AutoRegistration instance (use as async context manager)
     """
     auto_reg = AutoRegistration(
-        agent_info=agent_info,
-        registry_url=registry_url,
-        heartbeat_interval=heartbeat_interval
+        agent_info=agent_info, registry_url=registry_url, heartbeat_interval=heartbeat_interval
     )
     await auto_reg.start()
     return auto_reg
@@ -267,8 +267,8 @@ def create_agent_info_from_a2a_server(
     name: str,
     description: str,
     server_url: str,
-    skills: List[Dict[str, Any]] = None,
-    capabilities: Dict[str, Any] = None
+    skills: list[dict[str, Any]] = None,
+    capabilities: dict[str, Any] = None,
 ) -> AgentInfo:
     """
     Create AgentInfo from A2A server parameters.
@@ -288,5 +288,5 @@ def create_agent_info_from_a2a_server(
         description=description,
         url=server_url,
         skills=skills or [],
-        capabilities=capabilities or {}
+        capabilities=capabilities or {},
     )

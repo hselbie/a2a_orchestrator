@@ -5,19 +5,15 @@ This orchestrator queries the registry, creates execution plans, and delegates
 execution to a specialized executor agent with MCP tools.
 """
 
-import json
 from pathlib import Path
+
 from google.adk.agents import LlmAgent
 from google.adk.tools.function_tool import FunctionTool
-from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
 from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
+from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
 from mcp import StdioServerParameters
 
-from .planning_tools import (
-    create_execution_plan,
-    get_registry_status,
-    list_available_agents
-)
+from .planning_tools import create_execution_plan, get_registry_status, list_available_agents
 
 # Get the project root directory
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -114,7 +110,7 @@ Your goal is to seamlessly connect users with the right specialized tools based 
             list_available_agents_tool,
             get_registry_status_tool,
             weather_toolset,
-            cocktail_toolset
+            cocktail_toolset,
         ],
     )
 

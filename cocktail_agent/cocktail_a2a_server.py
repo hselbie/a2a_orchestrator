@@ -1,15 +1,16 @@
-import uvicorn
-import logging
 import asyncio
+import logging
 import os
+
+import uvicorn
 from dotenv import load_dotenv
 
 # Configure logging with structured format
-LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
     level=getattr(logging, LOG_LEVEL),
-    format='%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    format="%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
 
@@ -22,14 +23,15 @@ from a2a.types import (
     AgentSkill,
 )
 from google.adk.a2a.executor.a2a_agent_executor import A2aAgentExecutor
-from google.adk.runners import Runner
 from google.adk.artifacts import InMemoryArtifactService
+from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
 from cocktail_agent.cocktail_agent import create_cocktail_agent
-from registry_service.auto_registration import AutoRegistration, AgentInfo
+from registry_service.auto_registration import AgentInfo, AutoRegistration
 
 load_dotenv()
+
 
 async def main():
     logger.info("🍹 Starting A2A Cocktail Agent Server with Auto-Registration...")
@@ -50,29 +52,29 @@ async def main():
 
     # Define agent skill with more detailed examples
     skill = AgentSkill(
-        id='cocktail_recipes',
-        name='Cocktail Recipes',
-        description='Search for cocktail recipes and ingredient information using TheCocktailDB.',
-        tags=['cocktail', 'recipe', 'bartender', 'drinks', 'ingredients', 'mixing', 'alcohol'],
+        id="cocktail_recipes",
+        name="Cocktail Recipes",
+        description="Search for cocktail recipes and ingredient information using TheCocktailDB.",
+        tags=["cocktail", "recipe", "bartender", "drinks", "ingredients", "mixing", "alcohol"],
         examples=[
-            'how to make a margarita',
-            'cocktails with vodka',
-            'recipe for old fashioned',
-            'what drinks can I make with gin',
-            'show me tequila cocktails',
-            'ingredients for a mojito',
-            'classic cocktail recipes'
+            "how to make a margarita",
+            "cocktails with vodka",
+            "recipe for old fashioned",
+            "what drinks can I make with gin",
+            "show me tequila cocktails",
+            "ingredients for a mojito",
+            "classic cocktail recipes",
         ],
     )
 
     # Create agent card
     public_agent_card = AgentCard(
-        name='Cocktail Agent',
-        description='A specialized bartending agent for cocktail recipes and drink recommendations.',
-        url='http://localhost:8002',
-        version='1.0.0',
-        defaultInputModes=['text'],
-        defaultOutputModes=['text'],
+        name="Cocktail Agent",
+        description="A specialized bartending agent for cocktail recipes and drink recommendations.",
+        url="http://localhost:8002",
+        version="1.0.0",
+        defaultInputModes=["text"],
+        defaultOutputModes=["text"],
         capabilities=AgentCapabilities(streaming=True),
         skills=[skill],
         supportsAuthenticatedExtendedCard=False,
@@ -88,15 +90,17 @@ async def main():
             "cocktail_recipes": True,
             "cocktaildb_integration": True,
             "ingredient_search": True,
-            "supports_streaming": True
+            "supports_streaming": True,
         },
-        skills=[{
-            "id": skill.id,
-            "name": skill.name,
-            "description": skill.description,
-            "tags": skill.tags,
-            "examples": skill.examples
-        }]
+        skills=[
+            {
+                "id": skill.id,
+                "name": skill.name,
+                "description": skill.description,
+                "tags": skill.tags,
+                "examples": skill.examples,
+            }
+        ],
     )
 
     # Create request handler
@@ -113,9 +117,7 @@ async def main():
 
     # Setup auto-registration
     auto_registration = AutoRegistration(
-        agent_info=agent_info,
-        registry_url="http://localhost:8080",
-        heartbeat_interval=15
+        agent_info=agent_info, registry_url="http://localhost:8080", heartbeat_interval=15
     )
 
     logger.info("⚙️ Cocktail Agent Server configured, starting auto-registration...")
@@ -133,7 +135,7 @@ async def main():
             timeout_keep_alive=300,
             timeout_graceful_shutdown=300,
             access_log=True,
-            log_level="info"
+            log_level="info",
         )
         server_instance = uvicorn.Server(config)
 
@@ -148,5 +150,5 @@ async def main():
         logger.info("✅ Cocktail agent unregistered and cleaned up")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())

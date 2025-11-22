@@ -5,20 +5,21 @@ These tools allow the orchestrator to discover agents and create execution plans
 without directly executing A2A calls.
 """
 
-import asyncio
-import logging
 import json
-from typing import List, Dict, Any, Optional
-import aiohttp
-from google.adk.tools.tool_context import ToolContext
+import logging
 
 # Configure logging with structured format
 import os
-LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
+from typing import Any
+
+import aiohttp
+from google.adk.tools.tool_context import ToolContext
+
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 logger = logging.getLogger(__name__)
 
 # Global session for reuse
-_global_session: Optional[aiohttp.ClientSession] = None
+_global_session: aiohttp.ClientSession | None = None
 
 
 async def _get_session() -> aiohttp.ClientSession:
@@ -29,7 +30,7 @@ async def _get_session() -> aiohttp.ClientSession:
     return _global_session
 
 
-def _calculate_relevance_score(agent: Dict[str, Any], intent: str) -> float:
+def _calculate_relevance_score(agent: dict[str, Any], intent: str) -> float:
     """Calculate how relevant an agent is for the given intent."""
     score = 0.0
     intent_lower = intent.lower()
@@ -63,7 +64,9 @@ def _calculate_relevance_score(agent: Dict[str, Any], intent: str) -> float:
         # Check skill examples
         examples = skill.get("examples", [])
         for example in examples:
-            if intent_lower in example.lower() or any(word in intent_lower for word in example.lower().split()):
+            if intent_lower in example.lower() or any(
+                word in intent_lower for word in example.lower().split()
+            ):
                 skill_score += 0.05
 
         score += min(skill_score, 0.4)  # Cap skill contribution
@@ -78,7 +81,7 @@ def _calculate_relevance_score(agent: Dict[str, Any], intent: str) -> float:
     return min(score, 1.0)  # Cap at 1.0
 
 
-def _explain_score(agent: Dict[str, Any], intent: str, score: float) -> str:
+def _explain_score(agent: dict[str, Any], intent: str, score: float) -> str:
     """Explain why an agent received a particular score."""
     reasons = []
     intent_lower = intent.lower()
@@ -94,8 +97,11 @@ def _explain_score(agent: Dict[str, Any], intent: str, score: float) -> str:
         if intent_lower in skill.get("name", "").lower():
             reasons.append(f"skill '{skill.get('name')}' matches")
         elif intent_lower in skill.get("description", "").lower():
-            reasons.append(f"skill description matches")
-        elif any(intent_lower in tag.lower() or tag.lower() in intent_lower for tag in skill.get("tags", [])):
+            reasons.append("skill description matches")
+        elif any(
+            intent_lower in tag.lower() or tag.lower() in intent_lower
+            for tag in skill.get("tags", [])
+        ):
             reasons.append("skill tags match")
 
     if not reasons:
@@ -136,31 +142,32 @@ async def create_execution_plan(user_query: str, tool_context: ToolContext) -> s
             agents = await response.json()
 
             if not agents:
-                return json.dumps({
-                    "error": "No agents currently registered",
-                    "plan": None
-                })
+                return json.dumps({"error": "No agents currently registered", "plan": None})
 
             # Score agents based on intent
             scored_agents = []
             for agent in agents:
                 score = _calculate_relevance_score(agent, intent)
                 if score > 0:
-                    scored_agents.append({
-                        "agent": agent,
-                        "score": score,
-                        "reasoning": _explain_score(agent, intent, score)
-                    })
+                    scored_agents.append(
+                        {
+                            "agent": agent,
+                            "score": score,
+                            "reasoning": _explain_score(agent, intent, score),
+                        }
+                    )
 
             # Sort by score (highest first)
             scored_agents.sort(key=lambda x: x["score"], reverse=True)
 
             if not scored_agents:
-                return json.dumps({
-                    "error": f"No agents found matching intent: '{intent}'",
-                    "available_agents": [a['name'] for a in agents],
-                    "plan": None
-                })
+                return json.dumps(
+                    {
+                        "error": f"No agents found matching intent: '{intent}'",
+                        "available_agents": [a["name"] for a in agents],
+                        "plan": None,
+                    }
+                )
 
             # Create execution plan
             best_agent = scored_agents[0]
@@ -171,28 +178,26 @@ async def create_execution_plan(user_query: str, tool_context: ToolContext) -> s
                     "name": best_agent["agent"]["name"],
                     "url": best_agent["agent"]["url"],
                     "score": best_agent["score"],
-                    "reasoning": best_agent["reasoning"]
+                    "reasoning": best_agent["reasoning"],
                 },
                 "execution_method": "mcp_tool",
                 "tool_name": _get_tool_name_for_agent(best_agent["agent"]),
-                "parameters": {
-                    "query": user_query
-                },
+                "parameters": {"query": user_query},
                 "alternatives": [
                     {
                         "name": alt["agent"]["name"],
                         "url": alt["agent"]["url"],
-                        "score": alt["score"]
-                    } for alt in scored_agents[1:3]  # Top 2 alternatives
-                ]
+                        "score": alt["score"],
+                    }
+                    for alt in scored_agents[1:3]  # Top 2 alternatives
+                ],
             }
 
-            logger.info(f"✅ Created execution plan: selected {plan['selected_agent']['name']} (score: {plan['selected_agent']['score']})")
+            logger.info(
+                f"✅ Created execution plan: selected {plan['selected_agent']['name']} (score: {plan['selected_agent']['score']})"
+            )
 
-            return json.dumps({
-                "success": True,
-                "plan": plan
-            })
+            return json.dumps({"success": True, "plan": plan})
 
     except Exception as e:
         error_msg = f"Error creating execution plan: {e}"
@@ -205,12 +210,34 @@ def _extract_intent(user_query: str) -> str:
     query_lower = user_query.lower()
 
     # Weather-related keywords
-    weather_keywords = ["weather", "forecast", "temperature", "rain", "snow", "sunny", "cloudy", "wind", "humidity"]
+    weather_keywords = [
+        "weather",
+        "forecast",
+        "temperature",
+        "rain",
+        "snow",
+        "sunny",
+        "cloudy",
+        "wind",
+        "humidity",
+    ]
     if any(keyword in query_lower for keyword in weather_keywords):
         return "weather information"
 
     # Cocktail-related keywords
-    cocktail_keywords = ["cocktail", "drink", "recipe", "bartender", "martini", "mojito", "margarita", "whiskey", "vodka", "gin", "rum"]
+    cocktail_keywords = [
+        "cocktail",
+        "drink",
+        "recipe",
+        "bartender",
+        "martini",
+        "mojito",
+        "margarita",
+        "whiskey",
+        "vodka",
+        "gin",
+        "rum",
+    ]
     if any(keyword in query_lower for keyword in cocktail_keywords):
         return "cocktail recipe"
 
@@ -218,7 +245,7 @@ def _extract_intent(user_query: str) -> str:
     return "general query"
 
 
-def _get_tool_name_for_agent(agent: Dict[str, Any]) -> str:
+def _get_tool_name_for_agent(agent: dict[str, Any]) -> str:
     """Map agent to corresponding MCP tool name."""
     agent_name = agent.get("name", "").lower()
 
@@ -279,18 +306,17 @@ async def list_available_agents(tool_context: ToolContext) -> str:
 
                 agent_list = []
                 for agent in agents:
-                    agent_list.append({
-                        "name": agent.get("name"),
-                        "description": agent.get("description"),
-                        "url": agent.get("url"),
-                        "capabilities": list(agent.get("capabilities", {}).keys()),
-                        "skills": [skill.get("name") for skill in agent.get("skills", [])]
-                    })
+                    agent_list.append(
+                        {
+                            "name": agent.get("name"),
+                            "description": agent.get("description"),
+                            "url": agent.get("url"),
+                            "capabilities": list(agent.get("capabilities", {}).keys()),
+                            "skills": [skill.get("name") for skill in agent.get("skills", [])],
+                        }
+                    )
 
-                return json.dumps({
-                    "total_agents": len(agents),
-                    "agents": agent_list
-                })
+                return json.dumps({"total_agents": len(agents), "agents": agent_list})
             else:
                 error_msg = f"Failed to retrieve agents: HTTP {response.status}"
                 logger.error(f"❌ {error_msg}")

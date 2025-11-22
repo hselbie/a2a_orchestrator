@@ -11,17 +11,19 @@ import json
 import logging
 import os
 import sys
+
 import aiohttp
 import websockets
 
 # Configure logging
-LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
     level=getattr(logging, LOG_LEVEL),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
+
 
 class SystemTester:
     """Test suite for the A2A Dynamic Orchestrator system."""
@@ -77,7 +79,9 @@ class SystemTester:
                     status = await response.json()
                     total_agents = status.get("total_agents", 0)
                     active_agents = status.get("active_agents", 0)
-                    logger.info(f"📊 Registry status: {total_agents} total, {active_agents} active agents")
+                    logger.info(
+                        f"📊 Registry status: {total_agents} total, {active_agents} active agents"
+                    )
                     return total_agents >= 2 and active_agents >= 2
                 return False
 
@@ -109,11 +113,13 @@ class SystemTester:
                 logger.info(f"📥 Received response ({len(message)} chars)")
                 # Check if response contains weather-related content
                 weather_keywords = ["weather", "temperature", "forecast", "conditions"]
-                has_weather_content = any(keyword in message.lower() for keyword in weather_keywords)
+                has_weather_content = any(
+                    keyword in message.lower() for keyword in weather_keywords
+                )
 
                 return has_weather_content and len(message) > 50
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.error("⏰ Weather query timed out")
             return False
         except Exception as e:
@@ -137,11 +143,13 @@ class SystemTester:
                 logger.info(f"📥 Received response ({len(message)} chars)")
                 # Check if response contains cocktail-related content
                 cocktail_keywords = ["margarita", "cocktail", "drink", "recipe", "ingredient"]
-                has_cocktail_content = any(keyword in message.lower() for keyword in cocktail_keywords)
+                has_cocktail_content = any(
+                    keyword in message.lower() for keyword in cocktail_keywords
+                )
 
                 return has_cocktail_content and len(message) > 50
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.error("⏰ Cocktail query timed out")
             return False
         except Exception as e:
@@ -180,6 +188,7 @@ class SystemTester:
                     logger.error(f"   • {name}: {error}")
             return False
 
+
 async def main():
     """Main test execution."""
     tester = SystemTester()
@@ -194,6 +203,7 @@ async def main():
     except Exception as e:
         logger.error(f"❌ Test execution failed: {e}")
         return 1
+
 
 if __name__ == "__main__":
     exit_code = asyncio.run(main())

@@ -1,15 +1,16 @@
-import uvicorn
-import logging
 import asyncio
+import logging
 import os
+
+import uvicorn
 from dotenv import load_dotenv
 
 # Configure logging with structured format
-LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
     level=getattr(logging, LOG_LEVEL),
-    format='%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    format="%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
 
@@ -22,14 +23,15 @@ from a2a.types import (
     AgentSkill,
 )
 from google.adk.a2a.executor.a2a_agent_executor import A2aAgentExecutor
-from google.adk.runners import Runner
 from google.adk.artifacts import InMemoryArtifactService
+from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
+from registry_service.auto_registration import AgentInfo, AutoRegistration
 from weather_agent.weather_agent import create_weather_agent
-from registry_service.auto_registration import AutoRegistration, AgentInfo
 
 load_dotenv()
+
 
 async def main():
     logger.info("🌦️ Starting A2A Weather Agent Server with Auto-Registration...")
@@ -50,28 +52,28 @@ async def main():
 
     # Define agent skill with more detailed examples
     skill = AgentSkill(
-        id='weather_forecast',
-        name='Weather Forecast',
-        description='Get weather forecasts and alerts for US locations using National Weather Service data.',
-        tags=['weather', 'forecast', 'alerts', 'nws', 'temperature', 'conditions'],
+        id="weather_forecast",
+        name="Weather Forecast",
+        description="Get weather forecasts and alerts for US locations using National Weather Service data.",
+        tags=["weather", "forecast", "alerts", "nws", "temperature", "conditions"],
         examples=[
-            'what is the weather for san francisco',
-            'weather forecast for new york',
-            'any weather alerts for chicago',
-            'temperature in seattle today',
-            'will it rain in miami tomorrow',
-            'weather conditions in denver'
+            "what is the weather for san francisco",
+            "weather forecast for new york",
+            "any weather alerts for chicago",
+            "temperature in seattle today",
+            "will it rain in miami tomorrow",
+            "weather conditions in denver",
         ],
     )
 
     # Create agent card
     public_agent_card = AgentCard(
-        name='Weather Agent',
-        description='A specialized agent for weather forecasts and alerts using National Weather Service API.',
-        url='http://localhost:8001',
-        version='1.0.0',
-        defaultInputModes=['text'],
-        defaultOutputModes=['text'],
+        name="Weather Agent",
+        description="A specialized agent for weather forecasts and alerts using National Weather Service API.",
+        url="http://localhost:8001",
+        version="1.0.0",
+        defaultInputModes=["text"],
+        defaultOutputModes=["text"],
         capabilities=AgentCapabilities(streaming=True),
         skills=[skill],
         supportsAuthenticatedExtendedCard=False,
@@ -87,15 +89,17 @@ async def main():
             "weather_forecast": True,
             "nws_integration": True,
             "location_based": True,
-            "supports_streaming": True
+            "supports_streaming": True,
         },
-        skills=[{
-            "id": skill.id,
-            "name": skill.name,
-            "description": skill.description,
-            "tags": skill.tags,
-            "examples": skill.examples
-        }]
+        skills=[
+            {
+                "id": skill.id,
+                "name": skill.name,
+                "description": skill.description,
+                "tags": skill.tags,
+                "examples": skill.examples,
+            }
+        ],
     )
 
     # Create request handler
@@ -112,9 +116,7 @@ async def main():
 
     # Setup auto-registration
     auto_registration = AutoRegistration(
-        agent_info=agent_info,
-        registry_url="http://localhost:8080",
-        heartbeat_interval=15
+        agent_info=agent_info, registry_url="http://localhost:8080", heartbeat_interval=15
     )
 
     logger.info("⚙️ Weather Agent Server configured, starting auto-registration...")
@@ -132,7 +134,7 @@ async def main():
             timeout_keep_alive=300,
             timeout_graceful_shutdown=300,
             access_log=True,
-            log_level="info"
+            log_level="info",
         )
         server_instance = uvicorn.Server(config)
 
@@ -147,5 +149,5 @@ async def main():
         logger.info("✅ Weather agent unregistered and cleaned up")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())

@@ -5,7 +5,7 @@ This version uses the planning/execution pattern instead of trying to
 directly call RemoteA2aAgent.run_async().
 """
 
-import asyncio
+import json
 import logging
 from pathlib import Path
 
@@ -17,7 +17,6 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 from starlette.websockets import WebSocketDisconnect
-import json
 
 from .planning_orchestrator_agent import create_planning_orchestrator_agent
 
@@ -29,9 +28,10 @@ STATIC_DIR = Path(__file__).parent.parent / "static"
 session_service = InMemorySessionService()
 artifacts_service = InMemoryArtifactService()
 
+
 async def process_message_with_runner(runner: Runner, session_id: str, question: str):
     """Processes a single message using the provided runner."""
-    logging.info(f"🎯 PLANNING ORCHESTRATOR PROCESSING: User query received")
+    logging.info("🎯 PLANNING ORCHESTRATOR PROCESSING: User query received")
     logging.info(f"   Session: {session_id}")
     logging.info(f"   Query: {question}")
 
@@ -48,21 +48,32 @@ async def process_message_with_runner(runner: Runner, session_id: str, question:
             if event.content.role == "model" and event.content.parts[0].text:
                 event_text = event.content.parts[0].text
                 print(f"[planning-orchestrator-event-{event_count}]:", event_text)
-                logging.info(f"📢 PLANNING ORCHESTRATOR EVENT #{event_count}: {event_text[:100]}...")
+                logging.info(
+                    f"📢 PLANNING ORCHESTRATOR EVENT #{event_count}: {event_text[:100]}..."
+                )
                 response_parts.append(event_text)
 
-        logging.info(f"✅ PLANNING ORCHESTRATOR COMPLETE: Generated {len(response_parts)} response parts from {event_count} events")
+        logging.info(
+            f"✅ PLANNING ORCHESTRATOR COMPLETE: Generated {len(response_parts)} response parts from {event_count} events"
+        )
         return response_parts
 
     except Exception as e:
-        logging.error(f"❌ PLANNING ORCHESTRATOR ERROR: Failed to process message for session {session_id}: {e}")
+        logging.error(
+            f"❌ PLANNING ORCHESTRATOR ERROR: Failed to process message for session {session_id}: {e}"
+        )
         logging.error(f"   Error type: {type(e).__name__}")
         # Return a fallback response so the user gets something
-        return [f"I apologize, but I encountered an error processing your request: {str(e)[:200]}..."]
+        return [
+            f"I apologize, but I encountered an error processing your request: {str(e)[:200]}..."
+        ]
+
 
 async def run_planning_orchestrator_session(websocket: WebSocket, session_id: str):
     """Handles client-to-orchestrator communication over WebSocket for a session."""
-    logging.info(f"🚀 PLANNING ORCHESTRATOR SESSION: Starting planning orchestrator for session {session_id}")
+    logging.info(
+        f"🚀 PLANNING ORCHESTRATOR SESSION: Starting planning orchestrator for session {session_id}"
+    )
 
     root_agent = create_planning_orchestrator_agent()
     runner = Runner(
@@ -82,8 +93,12 @@ async def run_planning_orchestrator_session(websocket: WebSocket, session_id: st
             try:
                 response_parts = await process_message_with_runner(runner, session_id, text)
                 if not response_parts:
-                    logging.warning(f"⚠️  PLANNING ORCHESTRATOR: No response generated for session {session_id}")
-                    response_parts = ["I apologize, but I wasn't able to generate a response to your query. Please try again."]
+                    logging.warning(
+                        f"⚠️  PLANNING ORCHESTRATOR: No response generated for session {session_id}"
+                    )
+                    response_parts = [
+                        "I apologize, but I wasn't able to generate a response to your query. Please try again."
+                    ]
 
                 # Send the text to the client
                 ai_message = "\n".join(response_parts)
@@ -95,13 +110,19 @@ async def run_planning_orchestrator_session(websocket: WebSocket, session_id: st
                 logging.info(f"✅ WEBSOCKET: Response sent successfully to {session_id}")
 
             except Exception as e:
-                logging.error(f"❌ WEBSOCKET ERROR: Failed to process/send message for session {session_id}: {e}")
+                logging.error(
+                    f"❌ WEBSOCKET ERROR: Failed to process/send message for session {session_id}: {e}"
+                )
                 try:
-                    error_message = f"I encountered an error processing your request: {str(e)[:200]}..."
+                    error_message = (
+                        f"I encountered an error processing your request: {str(e)[:200]}..."
+                    )
                     await websocket.send_text(json.dumps({"message": error_message}))
                     logging.info(f"📤 WEBSOCKET: Error message sent to {session_id}")
                 except Exception as send_error:
-                    logging.error(f"❌ WEBSOCKET SEND ERROR: Could not send error message to {session_id}: {send_error}")
+                    logging.error(
+                        f"❌ WEBSOCKET SEND ERROR: Could not send error message to {session_id}: {send_error}"
+                    )
                     break  # Connection is likely broken, exit the loop
 
     except WebSocketDisconnect:
@@ -110,13 +131,17 @@ async def run_planning_orchestrator_session(websocket: WebSocket, session_id: st
         logging.info(f"🧹 CLEANUP: Closing runner for session {session_id}...")
         try:
             await runner.close()
-            logging.info(f"✅ CLEANUP: Runner closed for session {session_id}. Planning orchestrator session ending.")
+            logging.info(
+                f"✅ CLEANUP: Runner closed for session {session_id}. Planning orchestrator session ending."
+            )
         except Exception as e:
             logging.warning(f"⚠️ CLEANUP: Error closing runner for session {session_id}: {e}")
             logging.info(f"✅ CLEANUP: Session {session_id} cleanup completed despite error.")
 
+
 # FastAPI web app
 app = FastAPI()
+
 
 @app.websocket("/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
@@ -139,18 +164,20 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     finally:
         logging.info(f"WebSocket endpoint for session {session_id} is concluding.")
 
+
 app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 
 if __name__ == "__main__":
-    import uvicorn
     import os
 
+    import uvicorn
+
     # Configure logging with structured format
-    LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
+    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
     logging.basicConfig(
         level=getattr(logging, LOG_LEVEL),
-        format='%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+        format="%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
     print("Starting Planning-Based Dynamic Orchestrator on http://localhost:8000")
     print("Make sure the following are running:")

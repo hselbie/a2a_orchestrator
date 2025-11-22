@@ -7,52 +7,56 @@ The registry maintains agent-url → agent-card mappings and supports heartbeat 
 
 import asyncio
 import logging
+
+# Configure logging with structured format
+import os
 import time
 from contextlib import asynccontextmanager
-from typing import Dict, List, Optional
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-# Configure logging with structured format
-import os
-LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
     level=getattr(logging, LOG_LEVEL),
-    format='%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    format="%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
 
 
 class AgentCard(BaseModel):
     """Agent card model for registration."""
+
     name: str
     description: str
     url: str
     version: str = "1.0.0"
-    capabilities: Dict = Field(default_factory=dict)
-    skills: List[Dict] = Field(default_factory=list)
+    capabilities: dict = Field(default_factory=dict)
+    skills: list[dict] = Field(default_factory=list)
 
 
 class AgentRegistration(BaseModel):
     """Request model for agent registration."""
+
     name: str
     description: str
     url: str
     version: str = "1.0.0"
-    capabilities: Dict = Field(default_factory=dict)
-    skills: List[Dict] = Field(default_factory=list)
+    capabilities: dict = Field(default_factory=dict)
+    skills: list[dict] = Field(default_factory=list)
 
 
 class HeartbeatRequest(BaseModel):
     """Request model for agent heartbeat."""
+
     url: str
 
 
 class RegistryStatus(BaseModel):
     """Response model for registry status."""
+
     total_agents: int
     active_agents: int
     registry_uptime: float
@@ -74,17 +78,19 @@ class InMemoryAgentRegistry:
             heartbeat_timeout: Seconds after which an agent is considered stale
             cleanup_interval: Seconds between cleanup runs
         """
-        self.agents: Dict[str, AgentCard] = {}  # agent-url → agent-card
-        self.last_seen: Dict[str, float] = {}   # agent-url → timestamp
+        self.agents: dict[str, AgentCard] = {}  # agent-url → agent-card
+        self.last_seen: dict[str, float] = {}  # agent-url → timestamp
         self.heartbeat_timeout = heartbeat_timeout
         self.cleanup_interval = cleanup_interval
         self.start_time = time.time()
-        self.cleanup_task: Optional[asyncio.Task] = None
+        self.cleanup_task: asyncio.Task | None = None
 
     async def start_cleanup_task(self):
         """Start the background cleanup task."""
         self.cleanup_task = asyncio.create_task(self._cleanup_loop())
-        logger.info(f"🚀 Started cleanup task (timeout={self.heartbeat_timeout}s, interval={self.cleanup_interval}s)")
+        logger.info(
+            f"🚀 Started cleanup task (timeout={self.heartbeat_timeout}s, interval={self.cleanup_interval}s)"
+        )
 
     async def stop_cleanup_task(self):
         """Stop the background cleanup task."""
@@ -150,11 +156,11 @@ class InMemoryAgentRegistry:
             return True
         return False
 
-    def get_all_agents(self) -> List[AgentCard]:
+    def get_all_agents(self) -> list[AgentCard]:
         """Get all registered agents."""
         return list(self.agents.values())
 
-    def get_agent(self, url: str) -> Optional[AgentCard]:
+    def get_agent(self, url: str) -> AgentCard | None:
         """Get a specific agent by URL."""
         return self.agents.get(url)
 
@@ -162,14 +168,15 @@ class InMemoryAgentRegistry:
         """Get registry status information."""
         current_time = time.time()
         active_agents = sum(
-            1 for last_seen in self.last_seen.values()
+            1
+            for last_seen in self.last_seen.values()
             if current_time - last_seen <= self.heartbeat_timeout
         )
 
         return RegistryStatus(
             total_agents=len(self.agents),
             active_agents=active_agents,
-            registry_uptime=current_time - self.start_time
+            registry_uptime=current_time - self.start_time,
         )
 
 
@@ -196,7 +203,7 @@ app = FastAPI(
     title="A2A Agent Registry",
     description="In-memory agent registry for A2A agent discovery",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 
@@ -222,7 +229,7 @@ async def reregister_agent(registration: AgentRegistration):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.get("/registry/agents", response_model=List[AgentCard])
+@app.get("/registry/agents", response_model=list[AgentCard])
 async def list_agents():
     """List all registered agents."""
     return registry.get_all_agents()
